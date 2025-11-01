@@ -1,28 +1,49 @@
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/supabase/server";
-import { Home } from "lucide-react";
+import { Home, Plus } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { StudySetsList } from "@/components/study-sets-list";
 
 export default function DashboardPage() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-gray-100 dark:bg-gray-900">
-      <p className="text-gray-600 text-3xl mb-10">
-        You&#39;re logged into your dashboard.
-      </p>
-      <Suspense
-        fallback={
-          <p className="text-gray-600 text-md mb-10">Loading user infos...</p>
-        }>
-        <UserData />
-      </Suspense>
-      <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
-        <Button asChild>
-          <Link href="/" className="inline-flex items-center">
-            <Home className="mr-2 h-4 w-4" />
-            Home
-          </Link>
-        </Button>
+    <div className="min-h-screen p-6 bg-gray-100 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-8">
+          <p className="text-gray-600 text-3xl mb-4">
+            You&#39;re logged into your dashboard.
+          </p>
+          <Suspense
+            fallback={
+              <p className="text-gray-600 text-md mb-4">Loading user infos...</p>
+            }>
+            <UserData />
+          </Suspense>
+        </div>
+
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
+              My Study Sets
+            </h2>
+            <Button asChild>
+              <Link href="/sets/new" className="inline-flex items-center">
+                <Plus className="mr-2 h-4 w-4" />
+                Create New
+              </Link>
+            </Button>
+          </div>
+          <StudySetsList />
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
+          <Button asChild>
+            <Link href="/" className="inline-flex items-center">
+              <Home className="mr-2 h-4 w-4" />
+              Home
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );
