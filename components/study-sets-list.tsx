@@ -19,19 +19,20 @@ interface Term {
 }
 
 export function StudySetsList() {
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
 
   // Filter study sets by logged-in user
   const { data: studySets, isLoading: setsLoading, error: setsError } = useClientFetch<StudySet>(
     "study-sets",
     "StudySet",
-    undefined,
+    0, // No cache - always fetch fresh data
     (query) => user ? query.eq("userId", user.id) : query
   );
 
   const { data: terms, isLoading: termsLoading } = useClientFetch<Term>(
     "terms",
-    "Term"
+    "Term",
+    0 // No cache - always fetch fresh data
   );
 
   if (setsLoading || termsLoading) {

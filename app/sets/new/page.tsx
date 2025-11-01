@@ -122,9 +122,9 @@ export default function NewStudySetPage() {
 
       toast.success("Study set created successfully!");
       router.push(`/sets/${studySetId}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error:", error);
-      toast.error(error.message || "Failed to create study set");
+      toast.error(error instanceof Error ? error.message : "Failed to create study set");
       setIsSubmitting(false);
     }
   };
