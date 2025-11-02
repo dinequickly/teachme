@@ -22,6 +22,9 @@ export function useClientFetch<T>(
 
       return data as T[];
     },
-    staleTime: cache ? cache : 0, //cache time if provided | 0 is no cache
+    staleTime: cache ? cache : 0, // Cache time if provided | 0 = always stale
+    gcTime: cache ? cache : 0, // Garbage collection time | 0 = don't cache
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 }
