@@ -57,9 +57,17 @@ export default function LoginForm() {
         return;
       }
 
-      queryClient.invalidateQueries({ queryKey: ["user"] }); //invalidate the user
-      router.push(redirectTo);
+      // Invalidate ALL queries to force fresh data fetch
+      queryClient.invalidateQueries();
+      
+      // Refresh router to get latest auth state
+      router.refresh();
+      
+      // Small delay to ensure auth state is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       toast.success("Welcome Back!");
+      router.push(redirectTo);
     });
   }
 
