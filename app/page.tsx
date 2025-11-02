@@ -1,4 +1,4 @@
-import { BookOpenText, Github, Package } from "lucide-react";
+import { BookOpenText, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import UserAuthState from "@/components/user-auth-state";
 import Link from "next/link";
@@ -36,9 +36,9 @@ export default function Home() {
               </div>
               <div className="space-x-4">
                 <Button asChild>
-                  <Link href="https://github.com/Mohamed-4rarh/next-supabase-starter">
-                    <Github className="mr-2 h-4 w-4" />
-                    View on GitHub
+                  <Link href="/dashboard">
+                    <BookOpenText className="mr-2 h-4 w-4" />
+                    View Dashboard
                   </Link>
                 </Button>
                 <Button variant="outline" asChild>

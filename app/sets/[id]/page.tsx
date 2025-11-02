@@ -32,14 +32,14 @@ export default function StudySetPage() {
   const { data: studySets, isLoading: setsLoading, error: setsError } = useClientFetch<StudySet>(
     `study-set-${setId}`,
     "StudySet",
-    undefined,
+    0, // No cache - always fetch fresh data
     (query) => query.eq("id", setId)
   );
 
   const { data: terms, isLoading: termsLoading } = useClientFetch<Term>(
     `terms-${setId}`,
     "Term",
-    undefined,
+    0, // No cache - always fetch fresh data
     (query) => query.eq("studySetId", setId).order("rank", { ascending: true })
   );
 
