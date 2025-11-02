@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useState } from "react";
 import { useClientFetch } from "@/hooks/use-client-fetch";
 import { Card, CardContent } from "@/components/ui/card";
@@ -267,4 +269,3 @@ export default function StudySetPage() {
     </div>
   );
 }
-
