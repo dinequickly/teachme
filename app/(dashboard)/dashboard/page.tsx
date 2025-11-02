@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/supabase/server";
-import { Home, Plus } from "lucide-react";
+import { Home, Plus, Settings } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { StudySetsList } from "@/components/study-sets-list";
@@ -26,12 +26,20 @@ export default function DashboardPage() {
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">
               My Study Sets
             </h2>
-            <Button asChild>
-              <Link href="/sets/new" className="inline-flex items-center">
-                <Plus className="mr-2 h-4 w-4" />
-                Create New
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button asChild variant="outline">
+                <Link href="/settings" className="inline-flex items-center">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/sets/new" className="inline-flex items-center">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create New
+                </Link>
+              </Button>
+            </div>
           </div>
           <StudySetsList />
         </div>

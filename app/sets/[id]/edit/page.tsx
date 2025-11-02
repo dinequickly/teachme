@@ -1,40 +1,121 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { createClient } from "@/supabase/client";
+import { useClientFetch } from "@/hooks/use-client-fetch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2, ArrowLeft, X } from "lucide-react";
+import { Loader2, Plus, Trash2, ArrowLeft, Image as ImageIcon, X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+
+interface StudySet {
+  id: string;
+  title: string;
+  description: string;
+  userId: string;
+}
+
+interface Term {
+  id: string;
+  word: string;
+  definition: string;
+  rank: number;
+  studySetId: string;
+}
 
 interface Flashcard {
   id: string;
   term: string;
   definition: string;
   imageUrl: string;
+  dbId?: string; // Original database ID for updates
 }
 
-// Helper function to encode image URLs in definition
+// Helper functions to encode/decode image URLs in definition
 const encodeImageUrl = (definition: string, imageUrl: string): string => {
   if (!imageUrl) return definition;
   return `__IMG__:${imageUrl}__DEF__:${definition}`;
 };
 
-export default function NewStudySetPage() {
+const decodeImageUrl = (definition: string): { imageUrl: string; text: string } => {
+  const match = definition.match(/^__IMG__:(.+?)__DEF__:(.+)$/);
+  if (match) {
+    return { imageUrl: match[1], text: match[2] };
+  }
+  return { imageUrl: "", text: definition };
+};
+
+export default function EditStudySetPage() {
   const router = useRouter();
+  const params = useParams();
+  const setId = params.id as string;
   const { user, loading: authLoading } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([
-    { id: crypto.randomUUID(), term: "", definition: "", imageUrl: "" },
-    { id: crypto.randomUUID(), term: "", definition: "", imageUrl: "" },
-  ]);
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch existing study set and terms
+  const { data: studySets } = useClientFetch<StudySet>(
+    `study-set-edit-${setId}`,
+    "StudySet",
+    0,
+    (query) => query.eq("id", setId)
+  );
+
+  const { data: terms } = useClientFetch<Term>(
+    `terms-edit-${setId}`,
+    "Term",
+    0,
+    (query) => query.eq("studySetId", setId).order("rank", { ascending: true })
+  );
+
+  useEffect(() => {
+    if (studySets?.[0] && terms) {
+      const studySet = studySets[0];
+      
+      // Check if user owns this study set
+      if (studySet.userId !== user?.id) {
+        toast.error("You don't have permission to edit this study set");
+        router.push(`/sets/${setId}`);
+        return;
+      }
+
+      setTitle(studySet.title);
+      setDescription(studySet.description || "");
+      
+      // Decode flashcards from database, extracting image URLs
+      const decodedFlashcards: Flashcard[] = terms.map((term) => {
+        const decoded = decodeImageUrl(term.definition);
+        return {
+          id: crypto.randomUUID(),
+          term: term.word,
+          definition: decoded.text,
+          imageUrl: decoded.imageUrl,
+          dbId: term.id,
+        };
+      });
+
+      // Ensure at least 2 cards
+      while (decodedFlashcards.length < 2) {
+        decodedFlashcards.push({
+          id: crypto.randomUUID(),
+          term: "",
+          definition: "",
+          imageUrl: "",
+        });
+      }
+
+      setFlashcards(decodedFlashcards);
+      setIsLoading(false);
+    }
+  }, [studySets, terms, user, setId, router]);
 
   const addFlashcard = () => {
     setFlashcards([...flashcards, { id: crypto.randomUUID(), term: "", definition: "", imageUrl: "" }]);
@@ -62,7 +143,7 @@ export default function NewStudySetPage() {
     e.preventDefault();
 
     if (!user) {
-      toast.error("You must be logged in to create a study set");
+      toast.error("You must be logged in to edit a study set");
       return;
     }
 
@@ -91,56 +172,84 @@ export default function NewStudySetPage() {
     try {
       const supabase = createClient();
       
-      // Generate a unique ID for the study set
-      const studySetId = crypto.randomUUID();
-
-      // Insert study set
-      const { error: studySetError } = await supabase.from("StudySet").insert({
-        id: studySetId,
-        userId: user.id,
-        title: title.trim(),
-        description: description.trim() || null,
-        type: "Default",
-        visibility: "Public",
-        wordLanguage: "en",
-        definitionLanguage: "en",
-        created: true,
-        createdAt: new Date().toISOString(),
-        savedAt: new Date().toISOString(),
-      });
+      // Update study set
+      const { error: studySetError } = await supabase
+        .from("StudySet")
+        .update({
+          title: title.trim(),
+          description: description.trim() || null,
+          savedAt: new Date().toISOString(),
+        })
+        .eq("id", setId);
 
       if (studySetError) {
-        console.error("Error creating study set:", studySetError);
+        console.error("Error updating study set:", studySetError);
         throw studySetError;
       }
 
-      // Insert flashcards with rank ordering (encode image URLs)
-      const termsToInsert = validFlashcards.map((card, index) => ({
-        id: crypto.randomUUID(),
-        studySetId: studySetId,
-        word: card.term.trim(),
-        definition: encodeImageUrl(card.definition.trim(), card.imageUrl.trim()),
-        rank: index + 1,
-        ephemeral: false,
-      }));
+      // Get existing term IDs to preserve
+      const existingTermIds = validFlashcards
+        .filter((card) => card.dbId)
+        .map((card) => card.dbId!);
 
-      const { error: termsError } = await supabase.from("Term").insert(termsToInsert);
+      // Delete removed terms
+      if (existingTermIds.length > 0) {
+        const { data: existingTerms } = await supabase
+          .from("Term")
+          .select("id")
+          .eq("studySetId", setId);
 
-      if (termsError) {
-        console.error("Error creating flashcards:", termsError);
-        throw termsError;
+        const termsToDelete = existingTerms
+          ?.filter((term) => !existingTermIds.includes(term.id))
+          .map((term) => term.id) || [];
+
+        if (termsToDelete.length > 0) {
+          await supabase.from("Term").delete().in("id", termsToDelete);
+        }
+      } else {
+        // No existing terms, delete all
+        await supabase.from("Term").delete().eq("studySetId", setId);
       }
 
-      toast.success("Study set created successfully!");
-      router.push(`/sets/${studySetId}`);
+      // Update or insert flashcards
+      const updatePromises = validFlashcards.map(async (card, index) => {
+        const encodedDefinition = encodeImageUrl(card.definition.trim(), card.imageUrl.trim());
+        
+        if (card.dbId) {
+          // Update existing term
+          return supabase
+            .from("Term")
+            .update({
+              word: card.term.trim(),
+              definition: encodedDefinition,
+              rank: index + 1,
+            })
+            .eq("id", card.dbId);
+        } else {
+          // Insert new term
+          return supabase.from("Term").insert({
+            id: crypto.randomUUID(),
+            studySetId: setId,
+            word: card.term.trim(),
+            definition: encodedDefinition,
+            rank: index + 1,
+            ephemeral: false,
+          });
+        }
+      });
+
+      await Promise.all(updatePromises);
+
+      toast.success("Study set updated successfully!");
+      router.push(`/sets/${setId}`);
     } catch (error) {
       console.error("Error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create study set");
+      toast.error(error instanceof Error ? error.message : "Failed to update study set");
       setIsSubmitting(false);
     }
   };
 
-  if (authLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
@@ -151,7 +260,7 @@ export default function NewStudySetPage() {
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6">
-        <p className="text-xl mb-4">You must be logged in to create a study set</p>
+        <p className="text-xl mb-4">You must be logged in to edit a study set</p>
         <Button asChild>
           <Link href="/login">Login</Link>
         </Button>
@@ -163,17 +272,17 @@ export default function NewStudySetPage() {
     <div className="min-h-screen p-6 bg-gray-100 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto">
         <Button asChild variant="outline" className="mb-6">
-          <Link href="/dashboard">
+          <Link href={`/sets/${setId}`}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
+            Back to Study Set
           </Link>
         </Button>
 
         <Card>
           <CardHeader>
-            <CardTitle>Create New Study Set</CardTitle>
+            <CardTitle>Edit Study Set</CardTitle>
             <CardDescription>
-              Add a title, description, and at least 2 flashcards to create your study set
+              Update the title, description, and flashcards for your study set
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -330,10 +439,10 @@ export default function NewStudySetPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
+                      Saving...
                     </>
                   ) : (
-                    "Create Study Set"
+                    "Save Changes"
                   )}
                 </Button>
               </div>
