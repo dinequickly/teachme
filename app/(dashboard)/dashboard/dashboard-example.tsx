@@ -15,19 +15,14 @@ export default function DashboardExample() {
   const { user, loading } = useAuth(); // ✅ Uses the existing auth context
   const router = useRouter();
 
-  // ✅ Fixed: useClientFetch signature is (key, table, cache?, filters?)
-  // Only fetch if user is authenticated
   const { data, isLoading, error } = useClientFetch<ExampleData>(
-    "dashboard-data", // Query key
-    "your_table_name", // Replace with your actual table name
-    0, // Cache time (0 = always refetch)
-    (query) => {
-      // Only run query if user exists
-      if (!user) {
-        return query.limit(0); // Return empty query if no user
-      }
-      // Add your filters here
-      return query; // Or add filters like: query.eq("userId", user.id)
+    "dashboard-data",
+    "your_table_name",
+    {
+      cache: 0,
+      enabled: !loading && Boolean(user),
+      filters: (query) => (user ? query.eq("userId", user.id) : query.limit(0)),
+      extraKey: user?.id ?? "no-user",
     }
   );
 
@@ -93,4 +88,3 @@ export default function DashboardExample() {
     </div>
   );
 }
-

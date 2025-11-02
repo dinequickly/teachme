@@ -89,8 +89,11 @@ The dev server is already running at: **http://localhost:3000**
 const { data: studySets, isLoading: setsLoading, error: setsError } = useClientFetch<StudySet>(
   "study-sets",
   "StudySet",
-  undefined,
-  // (query) => query.eq("userId", user?.id) // This should be commented
+  {
+    cache: 0,
+    enabled: Boolean(user),
+    // filters: (query) => query.eq("userId", user?.id),
+  }
 );
 ```
 
@@ -181,4 +184,3 @@ For issues or questions:
 2. Check the terminal for server errors  
 3. Verify database connection in Supabase dashboard
 4. Review the DASHBOARD_FEATURE.md for detailed documentation
-

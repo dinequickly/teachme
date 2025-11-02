@@ -69,15 +69,23 @@ export default function EditStudySetPage() {
   const { data: studySets } = useClientFetch<StudySet>(
     `study-set-edit-${setId}`,
     "StudySet",
-    0,
-    (query) => query.eq("id", setId)
+    {
+      cache: 0,
+      enabled: Boolean(setId) && Boolean(user),
+      filters: (query) => query.eq("id", setId),
+      extraKey: setId,
+    }
   );
 
   const { data: terms } = useClientFetch<Term>(
     `terms-edit-${setId}`,
     "Term",
-    0,
-    (query) => query.eq("studySetId", setId).order("rank", { ascending: true })
+    {
+      cache: 0,
+      enabled: Boolean(setId) && Boolean(user),
+      filters: (query) => query.eq("studySetId", setId).order("rank", { ascending: true }),
+      extraKey: setId,
+    }
   );
 
   useEffect(() => {

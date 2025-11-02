@@ -25,14 +25,22 @@ export function StudySetsList() {
   const { data: studySets, isLoading: setsLoading, error: setsError } = useClientFetch<StudySet>(
     "study-sets",
     "StudySet",
-    0, // No cache - always fetch fresh data
-    (query) => user ? query.eq("userId", user.id) : query
+    {
+      cache: 0,
+      enabled: Boolean(user),
+      filters: (query) => query.eq("userId", user?.id),
+      extraKey: user?.id ?? "no-user",
+    }
   );
 
   const { data: terms, isLoading: termsLoading } = useClientFetch<Term>(
     "terms",
     "Term",
-    0 // No cache - always fetch fresh data
+    {
+      cache: 0,
+      enabled: Boolean(user),
+      extraKey: user?.id ?? "no-user",
+    }
   );
 
   if (setsLoading || termsLoading) {
@@ -94,4 +102,3 @@ export function StudySetsList() {
     </div>
   );
 }
-

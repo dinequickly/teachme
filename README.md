@@ -90,10 +90,12 @@ export function useAuth() {
 Use the `useClientFetch` hook for fetching data efficiently on client components:
 
 ```tsx
-import { useClientFetch } from "@/hooks/useClientFetch";
+import { useClientFetch } from "@/hooks/use-client-fetch";
 
 const Posts = () => {
-  const { data, isLoading } = useClientFetch("posts", "posts");
+  const { data, isLoading } = useClientFetch("posts", "posts", {
+    cache: 0,
+  });
 
   if (isLoading) return <p>Loading...</p>;
 
@@ -111,12 +113,10 @@ const Posts = () => {
 
 ```tsx
 const FilteredUsers = () => {
-  const { data, isLoading } = useClientFetch(
-    "filtered-users", // key
-    "users", // table name
-    5000, // cache time
-    (query) => query.eq("role", "admin") // Supabase query filter
-  );
+  const { data, isLoading } = useClientFetch("filtered-users", "users", {
+    cache: 5_000,
+    filters: (query) => query.eq("role", "admin"),
+  });
 
   if (isLoading) return <p>Loading...</p>;
 
