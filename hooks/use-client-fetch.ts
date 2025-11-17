@@ -5,14 +5,24 @@ import { useQuery } from "@tanstack/react-query";
 
 const supabase = createClient();
 
+type QueryModifier = (query: any) => any;
+
+interface ClientFetchOptions {
+  filters?: QueryModifier;
+  cache?: number;
+  enabled?: boolean;
+  extraKey?: unknown;
+}
+
 export function useClientFetch<T>(
   key: string,
   table: string,
-  cache?: number,
-  filters?: (query: any) => any
+  options: ClientFetchOptions = {}
 ) {
+  const { filters, cache, enabled, extraKey } = options;
+
   return useQuery<T[]>({
-    queryKey: [key],
+    queryKey: extraKey === undefined ? [key] : [key, extraKey],
     queryFn: async () => {
       let query = supabase.from(table).select("*");
       if (filters) query = filters(query);
@@ -22,9 +32,10 @@ export function useClientFetch<T>(
 
       return data as T[];
     },
-    staleTime: cache ? cache : 0, // Cache time if provided | 0 = always stale
-    gcTime: cache ? cache : 0, // Garbage collection time | 0 = don't cache
-    refetchOnMount: true, // Always refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window regains focus
+    staleTime: cache ?? 0,
+    gcTime: cache ?? 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    enabled: enabled ?? true,
   });
 }

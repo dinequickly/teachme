@@ -19,23 +19,30 @@ interface Term {
 }
 
 export function StudySetsList() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
-  // Filter study sets by logged-in user
   const { data: studySets, isLoading: setsLoading, error: setsError } = useClientFetch<StudySet>(
     "study-sets",
     "StudySet",
-    0, // No cache - always fetch fresh data
-    (query) => user ? query.eq("userId", user.id) : query
+    {
+      cache: 0,
+      enabled: !loading,
+      filters: (query) => (user ? query.eq("userId", user.id) : query),
+      extraKey: user?.id ?? "all",
+    }
   );
 
   const { data: terms, isLoading: termsLoading } = useClientFetch<Term>(
     "terms",
     "Term",
-    0 // No cache - always fetch fresh data
+    {
+      cache: 0,
+      enabled: !loading,
+      extraKey: user?.id ?? "all",
+    }
   );
 
-  if (setsLoading || termsLoading) {
+  if (loading || setsLoading || termsLoading) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
@@ -59,17 +66,16 @@ export function StudySetsList() {
     );
   }
 
-  // Count terms for each study set
   const termCounts = new Map<string, number>();
   terms?.forEach((term) => {
     termCounts.set(term.studySetId, (termCounts.get(term.studySetId) || 0) + 1);
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {studySets.map((set) => (
         <Link key={set.id} href={`/sets/${set.id}`}>
-          <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
+          <Card className="h-full cursor-pointer transition-shadow hover:shadow-lg">
             <CardHeader>
               <CardTitle className="text-xl">{set.title}</CardTitle>
               <CardDescription className="line-clamp-2">
@@ -94,4 +100,3 @@ export function StudySetsList() {
     </div>
   );
 }
-

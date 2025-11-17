@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -8,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Trash2, ArrowLeft, X } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -16,7 +18,14 @@ interface Flashcard {
   id: string;
   term: string;
   definition: string;
+  imageUrl: string;
 }
+
+// Helper function to encode image URLs in definition
+const encodeImageUrl = (definition: string, imageUrl: string): string => {
+  if (!imageUrl) return definition;
+  return `__IMG__:${imageUrl}__DEF__:${definition}`;
+};
 
 export default function NewStudySetPage() {
   const router = useRouter();
@@ -24,13 +33,13 @@ export default function NewStudySetPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [flashcards, setFlashcards] = useState<Flashcard[]>([
-    { id: crypto.randomUUID(), term: "", definition: "" },
-    { id: crypto.randomUUID(), term: "", definition: "" },
+    { id: crypto.randomUUID(), term: "", definition: "", imageUrl: "" },
+    { id: crypto.randomUUID(), term: "", definition: "", imageUrl: "" },
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addFlashcard = () => {
-    setFlashcards([...flashcards, { id: crypto.randomUUID(), term: "", definition: "" }]);
+    setFlashcards([...flashcards, { id: crypto.randomUUID(), term: "", definition: "", imageUrl: "" }]);
   };
 
   const removeFlashcard = (id: string) => {
@@ -41,10 +50,14 @@ export default function NewStudySetPage() {
     setFlashcards(flashcards.filter((card) => card.id !== id));
   };
 
-  const updateFlashcard = (id: string, field: "term" | "definition", value: string) => {
+  const updateFlashcard = (id: string, field: "term" | "definition" | "imageUrl", value: string) => {
     setFlashcards(
       flashcards.map((card) => (card.id === id ? { ...card, [field]: value } : card))
     );
+  };
+
+  const removeImage = (id: string) => {
+    updateFlashcard(id, "imageUrl", "");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,12 +116,12 @@ export default function NewStudySetPage() {
         throw studySetError;
       }
 
-      // Insert flashcards with rank ordering
+      // Insert flashcards with rank ordering (encode image URLs)
       const termsToInsert = validFlashcards.map((card, index) => ({
         id: crypto.randomUUID(),
         studySetId: studySetId,
         word: card.term.trim(),
-        definition: card.definition.trim(),
+        definition: encodeImageUrl(card.definition.trim(), card.imageUrl.trim()),
         rank: index + 1,
         ephemeral: false,
       }));
@@ -247,6 +260,46 @@ export default function NewStudySetPage() {
                                 required
                               />
                             </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`image-${card.id}`}>
+                                Image URL (optional)
+                              </Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  id={`image-${card.id}`}
+                                  placeholder="https://example.com/image.jpg"
+                                  value={card.imageUrl}
+                                  onChange={(e) =>
+                                    updateFlashcard(card.id, "imageUrl", e.target.value)
+                                  }
+                                  disabled={isSubmitting}
+                                  type="url"
+                                />
+                                {card.imageUrl && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeImage(card.id)}
+                                    disabled={isSubmitting}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                              {card.imageUrl && (
+                                <div className="mt-2 relative">
+                                  <img
+                                    src={card.imageUrl}
+                                    alt="Flashcard preview"
+                                    className="max-w-full h-32 object-contain rounded border"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = "none";
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <Button
                             type="button"
@@ -293,4 +346,3 @@ export default function NewStudySetPage() {
     </div>
   );
 }
-

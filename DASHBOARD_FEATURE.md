@@ -71,13 +71,16 @@ Three sample study sets with flashcards:
 
 Currently, the component displays **all** study sets from the database. To filter by the logged-in user:
 
-In `components/study-sets-list.tsx`, uncomment line 30:
+In `components/study-sets-list.tsx`, set the filter option:
 ```typescript
 const { data: studySets, isLoading: setsLoading, error: setsError } = useClientFetch<StudySet>(
   "study-sets",
   "StudySet",
-  undefined,
-  (query) => query.eq("userId", user?.id) // Uncomment this line
+  {
+    cache: 0,
+    enabled: Boolean(user),
+    filters: (query) => query.eq("userId", user?.id),
+  }
 );
 ```
 
@@ -132,4 +135,3 @@ Note: This requires that the study sets in the database have a `userId` that mat
 6. Add user filtering by default
 7. Add sharing capabilities
 8. Add favorites/bookmarks
-

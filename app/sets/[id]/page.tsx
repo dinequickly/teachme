@@ -1,18 +1,22 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useState } from "react";
 import { useClientFetch } from "@/hooks/use-client-fetch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, RotateCw } from "lucide-react";
+import { ArrowLeft, Loader2, ChevronLeft, ChevronRight, RotateCw, Edit } from "lucide-react";
 import { useParams } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 interface StudySet {
   id: string;
   title: string;
   description: string;
   createdAt: string;
+  userId: string;
 }
 
 interface Term {
@@ -23,28 +27,52 @@ interface Term {
   studySetId: string;
 }
 
+// Helper function to decode image URLs from definition
+const decodeImageUrl = (definition: string): { imageUrl: string; text: string } => {
+  const match = definition.match(/^__IMG__:(.+?)__DEF__:(.+)$/);
+  if (match) {
+    return { imageUrl: match[1], text: match[2] };
+  }
+  return { imageUrl: "", text: definition };
+};
+
 export default function StudySetPage() {
   const params = useParams();
   const setId = params.id as string;
+  const { user } = useAuth();
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
 
   const { data: studySets, isLoading: setsLoading, error: setsError } = useClientFetch<StudySet>(
     `study-set-${setId}`,
     "StudySet",
-    0, // No cache - always fetch fresh data
-    (query) => query.eq("id", setId)
+    {
+      cache: 0,
+      enabled: Boolean(setId),
+      filters: (query) => query.eq("id", setId),
+      extraKey: setId,
+    }
   );
 
   const { data: terms, isLoading: termsLoading } = useClientFetch<Term>(
     `terms-${setId}`,
     "Term",
-    0, // No cache - always fetch fresh data
-    (query) => query.eq("studySetId", setId).order("rank", { ascending: true })
+    {
+      cache: 0,
+      enabled: Boolean(setId),
+      filters: (query) => query.eq("studySetId", setId).order("rank", { ascending: true }),
+      extraKey: setId,
+    }
   );
 
   const studySet = studySets?.[0];
   const currentTerm = terms?.[currentCardIndex];
+  const isOwner = studySet?.userId === user?.id;
+  
+  // Decode image URL if present
+  const currentCardData = currentTerm 
+    ? decodeImageUrl(currentTerm.definition)
+    : { imageUrl: "", text: "" };
 
   const handleNext = () => {
     if (terms && currentCardIndex < terms.length - 1) {
@@ -119,12 +147,22 @@ export default function StudySetPage() {
   return (
     <div className="min-h-screen p-6 bg-gray-100 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto">
-        <Button asChild variant="outline" className="mb-6">
-          <Link href="/dashboard">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Link>
-        </Button>
+        <div className="flex items-center justify-between mb-6">
+          <Button asChild variant="outline">
+            <Link href="/dashboard">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Link>
+          </Button>
+          {isOwner && (
+            <Button asChild variant="outline">
+              <Link href={`/sets/${setId}/edit`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Link>
+            </Button>
+          )}
+        </div>
 
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-2">
@@ -153,9 +191,33 @@ export default function StudySetPage() {
                 <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                   {isFlipped ? "Definition" : "Term"}
                 </div>
+                {!isFlipped && currentCardData.imageUrl && (
+                  <div className="mb-4">
+                    <img
+                      src={currentCardData.imageUrl}
+                      alt={currentTerm?.word || "Flashcard image"}
+                      className="max-w-full max-h-64 mx-auto object-contain rounded"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="text-3xl font-bold text-gray-800 dark:text-gray-200 break-words">
-                  {isFlipped ? currentTerm?.definition : currentTerm?.word}
+                  {isFlipped ? currentCardData.text : currentTerm?.word}
                 </div>
+                {isFlipped && currentCardData.imageUrl && (
+                  <div className="mt-4">
+                    <img
+                      src={currentCardData.imageUrl}
+                      alt={currentCardData.text || "Flashcard image"}
+                      className="max-w-full max-h-64 mx-auto object-contain rounded"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="mt-8 text-sm text-gray-500 dark:text-gray-400 flex items-center justify-center gap-2">
                   <RotateCw className="h-4 w-4" />
                   Click to flip
@@ -215,4 +277,3 @@ export default function StudySetPage() {
     </div>
   );
 }
-
